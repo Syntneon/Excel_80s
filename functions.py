@@ -49,7 +49,6 @@ class FormulaFunctions:
         value = self._get_numeric_value(args[0])
         return abs(value)
    
-
     def IF(self, *args) -> float|str:
         """
         Реализация функции ЕСЛИ.
@@ -58,15 +57,62 @@ class FormulaFunctions:
         """
         if len(args) != 3:
             return "#N/A"
-
         condition, true_val, false_val = args
-
-
         if condition:
             # Возвращаем значение, не обязательно числовое
             return self.sheet.get_cell_value(true_val) if isinstance(true_val, str) else true_val
         else:
             return self.sheet.get_cell_value(false_val) if isinstance(false_val, str) else false_val
+    
+    def SUMIF(self, *args):
+        """
+        Реализация функции CУММЕСЛИ.
+        """
+        if not (2 <= len(args) <= 3):
+            return "#N/A"
+
+        range_str, criteria_str, *opt_sum_range = args
+        sum_range_str = opt_sum_range[0] if opt_sum_range else range_str
+
+        range_cells = self.expand_range(range_str)
+        sum_range_cells = self.expand_range(sum_range_str)
+        total = 0
+        for i, cell_id in enumerate(range_cells):
+            cell_to_check_value = self.sheet.get_cell_value(cell_id)
+
+            
+            if self._check_condition(cell_to_check_value, str(criteria_str)):
+                cell_to_sum_id = sum_range_cells[i]
+                value_to_sum = self.sheet.get_cell_value(cell_to_sum_id)
+                total += self._get_numeric_value(value_to_sum)
+                
+        return total
+
+    def _check_condition(self, cell_value, criteria: str) -> bool:
+
+        match = re.match(r'([<>=]+)\s*(.*)', criteria)
+        if match:
+            op, crit_val_str = match.groups()
+        else:
+            op, crit_val_str = '=', criteria
+        try:
+            num_cell_value = float(self._get_numeric_value(cell_value))
+            num_crit_value = float(crit_val_str)
+            
+            if op == '=': return num_cell_value == num_crit_value
+            if op == '>': return num_cell_value > num_crit_value
+            if op == '<': return num_cell_value < num_crit_value
+            if op == '>=': return num_cell_value >= num_crit_value
+            if op == '<=': return num_cell_value <= num_crit_value
+            if op == '<>': return num_cell_value != num_crit_value
+                
+            return False
+        except (ValueError, TypeError):
+        
+            if op == '=': return str(cell_value).lower() == crit_val_str.lower()
+            if op == '<>': return str(cell_value).lower() != crit_val_str.lower()
+            return False
+
 
     def expand_range(self, range_str: str) -> list:
         """
@@ -100,3 +146,4 @@ class FormulaFunctions:
             return match.groups()
         return None, None
    
+
